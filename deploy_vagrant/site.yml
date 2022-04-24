@@ -1,0 +1,10 @@
+---
+    - hosts: all
+      connection: local
+      gather_facts: true
+      become: true
+      tasks:
+
+      - name: "ejecutar el role - vagrant "
+        include_role:
+          name: init

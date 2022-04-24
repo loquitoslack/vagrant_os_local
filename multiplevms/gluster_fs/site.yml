@@ -1,0 +1,36 @@
+--- 
+- hosts: all
+  become: true
+  tasks:
+          - name: Instalando repositorios necesarios
+            yum: 
+             name: "{{ item }}"
+            loop:
+                - centos-release-gluster
+                - epel-release
+
+           - name: Instalando vim, bash-completion y otros paquetes
+             yum:
+                name: "{{ item }}"
+             loop:
+                - vim
+                - bash-completion
+                - wget 
+                - policycoreutils-python 
+                - bind-utils
+            - name: Limpiando cache
+              shell: |
+                yum clean all
+                yum clean expire-cache
+           
+            - name: instalando glusterfs-server
+              yum: 
+                name: "{{ item }}"
+              loop:
+                 - glusterfs-server
+           
+            - name: iniciar y habilitar servicios glusterfs
+              service: 
+                name: glusterd
+                state: started
+                enabled: yes

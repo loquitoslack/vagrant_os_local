@@ -1,0 +1,11 @@
+---
+ - hosts: all
+   become: true
+   tasks:
+    - name: redhat_subscription remove from redhat
+      redhat_subscription:
+        state: present
+        username: eefloresb.pe
+        password: K4rr45k0?*1981
+        auto_attach: true
+

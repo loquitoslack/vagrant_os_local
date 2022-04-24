@@ -1,0 +1,83 @@
+Vagrant.configure("2") do |config|
+
+  config.vm.provision "shell",
+    type: "shell",
+    preserve_order: true,
+    inline: <<-SHELL
+      # if [ `cat /etc/os-release | grep -ioe "debian"` = "debian" ]; then
+      if [ `lsb_release -a 2>/dev/null | grep -iwoE "(debian|ubuntu)" | head -n 1` ]; then
+        apt-get update
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get install -y python
+      elif [ "$(cat /etc/redhat-release | grep -ioe "red hat")" = "Red Hat" ]; then
+                echo -e "LANG=en_US.UTF-8\nLC_ALL=en_US.UTF-8" > /etc/environment
+                version="$(grep -w "VERSION_ID" /etc/os-release | cut -d = -f 2 | tr -d '"' | awk -F "." '{print $1}')"
+            if [ $version -eq "8" ]; then
+                yum install -y python36
+            fi
+      elif [ "$(cat /etc/redhat-release | grep -woi centos)" == "CentOS" ]; then
+           version=$(cat /etc/redhat-release | grep -woi "[[:digit:]]\.[[:digit:]]*" | awk -F "." '{print $1}')
+           if [ $version -eq "6" ]; then
+                yum install -y libselinux-python
+           elif [ $version -eq "5" ]; then
+                yum install -y epel-release
+                yum install -y python26
+           fi
+      fi
+
+  SHELL
+
+    config.vm.define "centos7" do |centos7|
+      centos7.vm.box = "centos/7"
+      centos7.vm.hostname = "centos7"
+      centos7.vm.network "private_network", ip: "192.168.33.81"
+      centos7.vm.provider "virtualbox" do |vb|
+          vb.memory = "512"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "centos7"
+        end
+      config.vm.provision "ansible" do |ansible|
+           ansible.extra_vars = {
+                 remove_ip: "192.168.33.81"
+           }
+           ansible.playbook = "../../../ansible/playbooks/create-user-vagrant.yml"
+      end
+    end
+
+    config.vm.define "redhat7" do |redhat7|
+      redhat7.vm.box = "iamseth/rhel-7.3"
+      redhat7.vm.hostname = "centos7"
+      redhat7.vm.network "private_network", ip: "192.168.33.82"
+      redhat7.vm.provider "virtualbox" do |vb|
+          vb.memory = "512"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "redhat7"
+        end
+      config.vm.provision "ansible" do |ansible|
+           ansible.extra_vars = {
+                 remove_ip: "192.168.33.82"
+           }
+           ansible.playbook = "../../../ansible/playbooks/create-user-vagrant.yml"
+      end
+    end
+
+    config.vm.define "ubuntu1804" do |ubuntu1804|
+      ubuntu1804.vm.box = "ubuntu/bionic64"
+      ubuntu1804.vm.hostname = "ubuntu1804"
+      ubuntu1804.vm.network "private_network", ip: "192.168.33.83"
+      ubuntu1804.vm.provider "virtualbox" do |vb|
+          vb.memory = "512"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "ubuntu1804"
+        end
+      config.vm.provision "ansible" do |ansible|
+           ansible.extra_vars = {
+                 remove_ip: "192.168.33.83"
+           }
+           ansible.playbook = "../../../ansible/playbooks/create-user-vagrant.yml"
+      end
+    end
+end

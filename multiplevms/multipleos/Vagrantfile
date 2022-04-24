@@ -1,0 +1,185 @@
+Vagrant.configure("2") do |config|
+  config.vm.provision "shell",
+    type: "shell",
+    preserve_order: true,
+    inline: <<-SHELL
+      #!/bin/sh
+      _registration_os_suse(){
+          SUSEConnect -e loquitoslack@gmail.com -r 419F58B555869027
+      }
+       _deregistration_os_suset(){
+          SUSEConnect -d
+      }
+      _registration_os_redhat(){
+            if [ `which subscription-manager` ]
+            then
+                 subscription-manager register --username=eefloresb.pe --password="K4rr45k0?*1981" --auto-attach --force
+            fi
+       }
+       _deregistration_os_redhat(){
+            if [ `which subscription-manager` ]
+            then
+              subscription-manager unregister
+            fi
+       }
+      _get_Amazon(){
+          os=$1
+          version=${2}
+      }
+      _get_Suse(){
+          os=$1
+          version=${2}
+      }
+      _get_RedHat(){
+           os=$1
+           version=${2%%.*}
+           band=false
+           if [ `which subscription-manager` ]; then
+                if [ `subscription-manager status | grep Overall | cut -d : -f 2 | tr -d " "` == "Unknown" ]
+                then
+                    _registration_os_redhat
+                    band=true
+                fi
+           fi
+           ### Desactiva repositorio epel para oracle
+           if [ $os = "Oracle" ]; then
+                sed -i -e "/enabled/s/1/0/" /etc/yum.repos.d/epel.repo
+           fi
+           if [ $version -ge 7 ]; then
+                echo -e "LANG=en_US.UTF-8\nLC_ALL=en_US.UTF-8" > /etc/environment
+           elif [ $version -eq 6 ]; then
+                yum install -y libselinux-python --nogpgcheck
+           elif [ $version -eq 5 ]; then
+                yum install -y epel-release --nogpgcheck
+                yum install -y python26 --nogpgcheck
+           fi
+
+           if [ $band == true ]; then
+                _deregistration_os_redhat
+           fi
+      }
+
+      _get_Debian(){
+           os=$1
+           version=$2
+           apt-get update
+           if [ $os == "ubuntu" ] && [ ${version%%.*} -le 16 ]
+           then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get install -y python
+           fi
+      }
+
+      _check_distro(){
+           if [ -f /etc/redhat-release ]
+           then
+              if [[ $(grep -ow "Red Hat" /etc/redhat-release) == "Red Hat" ]]
+              then
+                    if [ -f /etc/oracle-release ]
+                    then
+                        os="Oracle"
+                    else
+                        os="RedHat"
+                    fi
+              fi
+                version=`grep -wo '[[:digit:]].[[:digit:]]*' /etc/redhat-release`
+                _get_RedHat $os $version
+           elif [ -f /etc/release ]
+           then
+                os=`grep -woi solaris /etc/release`
+                version=`grep -Ewoi [[:digit:]].[[:digit:]]+ /etc/release`
+           elif [ -f /etc/os-release ]
+           then
+                os=`grep -w "ID" /etc/os-release | awk -F = '{print $2}' | tr -d '"'`
+                version=`grep -w "VERSION_ID" /etc/os-release | awk -F = '{print $2}' | tr -d '"'`
+                if [ $os == "centos" ] || [ $os == "RedHat" ]
+                then
+                     _get_RedHat $os $version
+                elif [ $os == "ubuntu" ] || [ $os == "debian"]
+                then
+                     _get_Debian $os $version
+                elif [ $os == 'sles' ]
+                then
+                    _get_Suse $os $version
+                elif [ $os == 'amzn' ]
+                then
+                    _get_Amazon $os $version
+                fi
+           fi
+        }
+
+_check_distro
+
+    SHELL
+
+  config.vm.provision "ansible" do |ansible|
+    ansible.host_vars = {
+      "centos7" => { "remove_ip" => "192.168.33.81"},
+      "redhat7" => { "remove_ip" => "192.168.33.82"},
+      "ubuntu1804" => { "remove_ip" => "192.168.33.83"}
+    }
+    ansible.playbook = "../../../ansible/playbooks/create-user-vagrant.yml"
+  end
+  config.vm.provision "shell",
+    type: "shell",
+    preserve_order: true,
+    inline: <<-SHELL
+      # if [ `cat /etc/os-release | grep -ioe "debian"` = "debian" ]; then
+      if [ `lsb_release -a 2>/dev/null | grep -iwoE "(debian|ubuntu)" | head -n 1` ]; then
+        apt-get update
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get install -y python
+      elif [ "$(cat /etc/redhat-release | grep -ioe "red hat")" = "Red Hat" ]; then
+                echo -e "LANG=en_US.UTF-8\nLC_ALL=en_US.UTF-8" > /etc/environment
+                version="$(grep -w "VERSION_ID" /etc/os-release | cut -d = -f 2 | tr -d '"' | awk -F "." '{print $1}')"
+            if [ $version -eq "8" ]; then
+                yum install -y python36
+            fi
+      elif [ "$(cat /etc/redhat-release | grep -woi centos)" == "CentOS" ]; then
+           version=$(cat /etc/redhat-release | grep -woi "[[:digit:]]\.[[:digit:]]*" | awk -F "." '{print $1}')
+           if [ $version -eq "6" ]; then
+                yum install -y libselinux-python
+           elif [ $version -eq "5" ]; then
+                yum install -y epel-release
+                yum install -y python26
+           fi
+      fi
+
+  SHELL
+
+    config.vm.define "centos7" do |centos7|
+      centos7.vm.box = "centos/7"
+      centos7.vm.hostname = "centos7"
+      centos7.vm.network "private_network", ip: "192.168.33.81"
+      centos7.vm.provider "virtualbox" do |vb|
+          vb.memory = "512"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "centos7"
+        end
+    end
+
+    config.vm.define "redhat7" do |redhat7|
+      redhat7.vm.box = "iamseth/rhel-7.3"
+      redhat7.vm.hostname = "centos7"
+      redhat7.vm.network "private_network", ip: "192.168.33.82"
+      redhat7.vm.provider "virtualbox" do |vb|
+          vb.memory = "512"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "redhat7"
+        end
+    end
+
+    config.vm.define "ubuntu1804" do |ubuntu1804|
+      ubuntu1804.vm.box = "ubuntu/bionic64"
+      ubuntu1804.vm.hostname = "ubuntu1804"
+      ubuntu1804.vm.network "private_network", ip: "192.168.33.83"
+      ubuntu1804.vm.provider "virtualbox" do |vb|
+          vb.memory = "512"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "ubuntu1804"
+        end
+      end
+    end

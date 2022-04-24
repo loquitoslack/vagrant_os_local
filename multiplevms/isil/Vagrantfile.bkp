@@ -1,0 +1,77 @@
+datadisk1 = 'data_disk1.vdi'
+
+Vagrant.configure("2") do |config|
+
+  config.vm.provision "shell",
+    type: "shell",
+    preserve_order: true,
+    inline: <<-SHELL
+      # if [ `cat /etc/os-release | grep -ioe "debian"` = "debian" ]; then
+      if [ `lsb_release -a 2>/dev/null | grep -iwoE "(debian|ubuntu)" | head -n 1` ]; then
+        apt-get update
+        apt-get install -y python
+      elif [ "$(cat /etc/redhat-release | grep -ioe "red hat")" = "Red Hat" ]; then
+                echo -e "LANG=en_US.UTF-8\nLC_ALL=en_US.UTF-8" > /etc/environment
+                version="$(grep -w "VERSION_ID" /etc/os-release | cut -d = -f 2 | tr -d '"' | awk -F "." '{print $1}')"
+            if [ $version -eq "8" ]; then
+                yum install -y python36
+            fi
+      elif [ "$(cat /etc/redhat-release | grep -woi centos)" == "CentOS" ]; then
+           version=$(cat /etc/redhat-release | grep -woi "[[:digit:]]\.[[:digit:]]*" | awk -F "." '{print $1}')
+           if [ $version -eq "6" ]; then
+                yum install -y libselinux-python
+           elif [ $version -eq "5" ]; then
+                yum install -y epel-release
+                yum install -y python26
+           fi
+      fi
+
+  SHELL
+
+    config.vm.define "bacula_dir" do |bacula_dir|
+      bacula_dir.vm.box = "centos/7"
+      bacula_dir.vm.hostname = "bacula-dir"
+      bacula_dir.vm.network "private_network", ip: "192.168.33.81"
+      bacula_dir.vm.provider "virtualbox" do |vb|
+          vb.memory = "2048"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "bacula-dir"
+      end
+  end
+
+
+      config.vm.define "bacula_storage" do |bacula_storage|
+      bacula_storage.vm.box = "centos/7"
+      bacula_storage.vm.hostname = "bacula-storager"
+      bacula_storage.vm.network "private_network", ip: "192.168.33.82"
+      bacula_storage.vm.provider "virtualbox" do |vb|
+          vb.memory = "2048"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "bacula-storage"
+          unless File.exist?(datadisk1)
+            vb.customize ['createhd', '--filename', datadisk1, '--size', 1 * 1024]
+          end
+          vb.customize ['storageattach', :id, '--storagectl', 'IDE', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', datadisk1]
+      end
+  end
+
+
+      config.vm.define "bacula_client" do |bacula_client|
+      bacula_client.vm.box = "centos/7"
+      bacula_client.vm.hostname = "bacula-storager"
+      bacula_client.vm.network "private_network", ip: "192.168.33.83"
+      bacula_client.vm.provider "virtualbox" do |vb|
+          vb.memory = "2048"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "bacula-client"
+      end
+  end
+
+  config.vm.provision "ansible" do |ansible|
+  ansible.playbook = "../../../ansible/playbooks/create-user-vagrant.yml"
+  end
+
+end

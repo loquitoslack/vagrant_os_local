@@ -1,0 +1,50 @@
+---
+  - hosts: all
+    become: true
+    gather_facts: true
+    vars:
+      usuario: sitenable
+      password: qu!ckEarth95@@!$
+      grupo: sitenable
+    tasks: 
+
+      - name: Create groups administrator
+        group:
+          name: "{{grupo}}"
+          state: present
+
+      - name: Create user administrator
+        user:
+          name: '{{usuario}}'
+          group: '{{grupo}}'
+          state: present
+          shell: /bin/bash
+          password: "{{ password | password_hash('sha512') }}"
+          append: yes
+
+      - name: "Brindar acceso al total de usuarios"
+        lineinfile:
+          path: /etc/sudoers
+          regexp: '^{{usuario}}.*ALL.*NOPASSWD.*ALL'
+          line: '{{usuario}} ALL=(ALL) NOPASSWD:ALL'
+          validate: /usr/sbin/visudo -cf %s
+          backup: yes
+
+      - name: Configurar SSH - Login permitido con password para usuarios de Canvia unicamente
+        blockinfile:
+          path: /etc/ssh/sshd_config
+          block: |
+            Match User {{usuario}}
+              PasswordAuthentication yes 
+          marker: "# {mark} PermitCanviaPasswordAuth block"
+        notify:
+          - restart sshd
+
+    handlers:
+     - name: restart ssh
+       service:
+        name: sshd 
+        state: restarted
+
+
+

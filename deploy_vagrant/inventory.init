@@ -1,0 +1,1 @@
+rhel_6 ansible_host=192.168.33.101 config_vm_box="generic/rhel6" vb_memory=1024 ruta_dir="/Users/edwinflores/Documents/github.com/MyProjects/vagrant/RedHat/6" config_vm_hostname="rhel6"

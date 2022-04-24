@@ -1,0 +1,31 @@
+---
+- hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+
+    - name: Add new values hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "{{item}}"
+        state: present
+      loop:
+        - '192.168.0.21 master01 master01.example.com'
+        - '192.168.0.32 node01 node01.example.com'
+        - '192.168.0.43 node02 node02.example.com'
+
+    - name: Crear directorio .ssh para root
+      file:
+        path: /root/.ssh
+        state: directory
+        mode: 0755
+        owner: root
+        group: root
+
+    - name: Copiar template ansible pub
+      copy:
+        src: "~/.ssh/id_rsa.pub"
+        dest: /root/.ssh/authorized_keys
+        mode: 0644
+        owner: root
+        group: root

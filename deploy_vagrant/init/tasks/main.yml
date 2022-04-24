@@ -1,0 +1,12 @@
+---
+# tasks file for init
+ - name: Copiar los archivos templates
+   template:
+    src: "{{item.from}}"
+    dest: "{{ruta_dir}}/{{item.dest}}"
+    owner: edwinflores
+    group: staff
+   with_items:
+    - {from: Vagrantfile.j2 , dest: Vagrantfile }
+    - {from: gitignore.j2, dest: .gitignore}
+

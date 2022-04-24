@@ -1,0 +1,73 @@
+datadisk1 = 'data_disk1.vdi'
+datadisk2 = 'data_disk2.vdi'
+datadisk3 = 'data_disk3.vdi'
+Vagrant.configure("2") do |config|
+
+     config.vm.provision "shell", path: "../../../scripts/check_so_vagrant.sh"
+
+      config.vm.define "node01" do |node01|
+          node01.vm.box = "generic/centos7"
+          node01.vm.hostname = "node01"
+          node01.vm.network "private_network", ip: "192.168.33.81"
+          node01.vm.provider "virtualbox" do |vb|
+          vb.memory = "4096"
+          vb.cpus = "2"
+          vb.linked_clone = true
+          vb.name = "node01"
+          unless File.exist?(datadisk2)
+               vb.customize ['createhd', '--filename', datadisk2, '--size', 50 * 1024]
+             end
+          vb.customize ['storageattach', :id, '--storagectl', 'IDE Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', datadisk2]
+        end
+      end
+
+      config.vm.define "node02" do |node02|
+          node02.vm.box = "generic/centos7"
+          node02.vm.hostname = "node02"
+          node02.vm.network "private_network", ip: "192.168.33.82"
+          node02.vm.provider "virtualbox" do |vb|
+            vb.memory = "4096"
+            vb.cpus = "2"
+            vb.linked_clone = true
+            vb.name = "node02"
+            unless File.exist?(datadisk1)
+              vb.customize ['createhd', '--filename', datadisk1, '--size', 50 * 1024]
+            end
+            vb.customize ['storageattach', :id, '--storagectl', 'IDE Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', datadisk1]
+        end
+      end
+
+      config.vm.define "master01" do |master01|
+          master01.vm.box = "generic/centos7"
+          master01.vm.hostname = "master01"
+          master01.vm.network "private_network", ip: "192.168.33.83"
+          master01.vm.provider "virtualbox" do |vb|
+            vb.memory = "4096"
+            vb.cpus = "2"
+            vb.linked_clone = true
+            vb.name = "master01"
+            unless File.exist?(datadisk3)
+               vb.customize ['createhd', '--filename', datadisk3, '--size', 50 * 1024]
+             end
+             vb.customize ['storageattach', :id, '--storagectl', 'IDE Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', datadisk3]
+        end
+      end
+
+      config.vm.provision "playbook1", type: 'ansible' do |ansible|
+       ansible.playbook = "../../../ansible/playbooks/create-user-vagrant.yml"
+       ansible.host_vars = {
+         "node01" => {"install_pkg"=>"true", "remove_ip" => "192.168.33.81"},
+         "node02" => {"install_pkg"=>"true", "remove_ip" => "192.168.33.82"},
+         "master01" => {"install_pkg"=>"true", "remove_ip" => "192.168.33.83"}
+      }
+      end
+
+      config.vm.provision "playbook2", type: 'ansible' do |ansible|
+          ansible.playbook = "./site.yml"
+
+      end
+
+      config.vm.provision "install_openshift", type: 'ansible' do |ansible|
+          ansible.playbook = "install_pkg.yml"
+      end
+end

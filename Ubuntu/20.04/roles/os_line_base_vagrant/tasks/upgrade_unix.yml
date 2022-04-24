@@ -1,0 +1,13 @@
+---
+  - name: Upgrade and install packages to RedHat Family
+    when:
+      ansible_os_family
+    block:
+
+      - name: upgrade packages for system
+        yum:
+          name: "*"
+          state: latest
+
+      - name: Install packages tools
+
