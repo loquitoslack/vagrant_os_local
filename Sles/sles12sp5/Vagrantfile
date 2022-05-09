@@ -2,7 +2,7 @@ Vagrant.configure("2") do |config|
    config.vm.define "sles" do |sles|
       sles.vm.network "forwarded_port", guest: 22, host: 2223, host_ip: "127.0.0.1"
       sles.vm.synced_folder '.', '/vagrant', disabled: true
-      sles.vm.box = "suse/sles12sp2"
+      sles.vm.box = "SLES12SP5"
       sles.vm.hostname = "lnxsles12sp2"
       sles.vm.network "private_network", ip: "192.168.56.10"
       sles.vm.provider "virtualbox" do |vb|

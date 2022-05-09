@@ -1,13 +1,12 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-
+datadisk3 = 'data_disk3.vdi'
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
 # backwards compatibility). Please don't change it unless you know what
 # you're doing.
 Vagrant.configure("2") do |config|
-
-   config.vm.provision "shell",
+  config.vm.provision "shell",
     type: "shell",
     preserve_order: true,
     inline: <<-SHELL
@@ -121,19 +120,15 @@ Vagrant.configure("2") do |config|
 
    _check_distro
 
-   echo "root:Tuadoo4u" | chpasswd root
-
     SHELL
-
   # The most common configuration options are documented and commented below.
   # For a complete reference, please see the online documentation at
   # https://docs.vagrantup.com.
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
-  config.vm.box = "generic/rhel7"
-  config.vm.box_version = "3.6.12"
-  config.vm.hostname = "redhat-linux"
+  config.vm.box = "generic/rhel8"
+  config.vm.hostname = "redhat-linux-8"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -153,7 +148,7 @@ Vagrant.configure("2") do |config|
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
-    config.vm.network "private_network", ip: "192.168.56.15"
+    config.vm.network "private_network", ip: "192.168.56.4"
 
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
@@ -176,9 +171,13 @@ Vagrant.configure("2") do |config|
   #
   #   # Customize the amount of memory on the VM:
       vb.memory = "1024"
-      vb.cpus = "1"
+      vb.cpus = "2"
       vb.linked_clone = true
-      vb.name = "rhel_7"
+      vb.name = "rhel_8"
+      unless File.exist?(datadisk3)
+        vb.customize ['createhd', '--filename', datadisk3, '--size', 20 * 1024]
+      end
+      vb.customize ['storageattach', :id, '--storagectl', 'IDE Controller', '--port', 0, '--device', 1, '--type', 'hdd', '--medium', datadisk3]
   end
   #
   # View the documentation for the provider you are using for more
@@ -194,16 +193,16 @@ Vagrant.configure("2") do |config|
   # Enable provisioning with a shell script. Additional provisioners such as
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
-  # config.vm.provision "shell", inline: <<-SHELL
-  #   apt-get update
-  #   apt-get install -y apache2
-  # SHELL
+  config.vm.provision "shell", inline: <<-SHELL
+    dnf install -y python36
+    ln -s -f /usr/libexec/platform-python3.6 /usr/bin/python
+  SHELL
 
   # Ejecutar un playbook de ansible (wordpress.yml) como aprovisionamiento del box
 
   config.vm.provision "ansible" do |ansible|
     ansible.extra_vars = {
-      remove_ip: "192.168.56.15"
+      remove_ip: "192.168.56.4"
      }
   	ansible.playbook = "../../../ansible/playbooks/create-user-vagrant.yml"
   end
