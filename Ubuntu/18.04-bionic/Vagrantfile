@@ -1,0 +1,22 @@
+Vagrant.configure("2") do |config|
+   config.vm.define "ubnt" do |ubnt|
+      ubnt.vm.synced_folder '.', '/vagrant', disabled: true
+      ubnt.vm.box = "ubuntu/bionic64"
+      ubnt.vm.hostname = "lnxubuntu18"
+      ubnt.vm.network "private_network", ip: "192.168.56.17"
+      ubnt.vm.provider "virtualbox" do |vb|
+          vb.memory = "512"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "lnxubuntu18"
+      end
+   end
+ config.vm.provision "ansible" do |ansible|
+  ansible.playbook = "../../../ansible/ansible_deploy_vagrant/create-user-vagrant.yml"
+  ansible.host_vars = {
+    "ubnt" => {"remove_ip"=>"192.168.56.17",
+              "install_pkg"=>"true"
+              }
+  }
+ end
+end
