@@ -1,7 +1,0 @@
----
- #   - name: configure repository to Unix System
- #     when: ansible_system == "Linux"
- #     include_tasks: upgrade_unix.yml
-
-    - name: create users for admin OS
-      include_tasks: define_user_linux.yml

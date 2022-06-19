@@ -1,0 +1,53 @@
+Vagrant.configure("2") do |config|
+
+config.vm.provision "shell", inline: <<-SHELL
+  echo "192.168.56.50   rhel8master.labrhel.com       rhel8master" >> /etc/hosts
+  echo "192.168.56.60   rhel8cliente1.labrhel.com     rhel8cliente1" >> /etc/hosts
+  echo "192.168.56.70   rhel8cliente2.labrhel.com     rhel8cliente2" >> /etc/hosts
+SHELL
+
+      config.vm.define "rhel8master" do |rhel8master|
+          rhel8master.vm.box = "generic/rhel8"
+          rhel8master.vm.hostname = "rhel8master.labrhel.com"
+          rhel8master.vm.network "private_network", ip: "192.168.56.50"
+          rhel8master.vm.provider "virtualbox" do |vb|
+          vb.memory = "1024"
+          vb.cpus = "1"
+          vb.linked_clone = true
+          vb.name = "rhel8master"
+        end
+      end
+
+      config.vm.define "rhel8cliente1" do |rhel8cliente1|
+          rhel8cliente1.vm.box = "generic/rhel8"
+          rhel8cliente1.vm.hostname = "rhel8cliente1.labrhel.com"
+          rhel8cliente1.vm.network "private_network", ip: "192.168.56.60"
+          rhel8cliente1.vm.provider "virtualbox" do |vb|
+            vb.memory = "512"
+            vb.cpus = "1"
+            vb.linked_clone = true
+            vb.name = "rhel8cliente1"
+        end
+      end
+
+      config.vm.define "rhel8cliente2" do |rhel8cliente2|
+          rhel8cliente2.vm.box = "generic/rhel8"
+          rhel8cliente2.vm.hostname = "rhel8cliente2.labrhel.com"
+          rhel8cliente2.vm.network "private_network", ip: "192.168.56.70"
+          rhel8cliente2.vm.provider "virtualbox" do |vb|
+            vb.memory = "512"
+            vb.cpus = "1"
+            vb.linked_clone = true
+            vb.name = "rhel8cliente2"
+        end
+      end
+
+     config.vm.provision "ansible" do |ansible|
+       ansible.playbook = "../../../ansible/ansible_deploy_vagrant/create-user-vagrant.yml"
+       ansible.host_vars = {
+         "rhel8master" => {"remove_ip" => "192.168.56.50", "install_pkg"=>"true"},
+         "rhel8cliente1" => {"remove_ip" => "192.168.56.60", "install_pkg"=>"true"},
+         "rhel8cliente2" => {"remove_ip" => "192.168.56.70", "install_pkg"=>"true"}
+       }
+     end
+end
